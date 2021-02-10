@@ -1,7 +1,7 @@
 public class Application {
     public static void main(String args[]) {
 
-        System.out.println("Hello Java github18");
+        System.out.println("Hello Java github19");
         Calculator cal = new Calculator();
         int m = cal.multiply(10,2);
         System.out.println(m);

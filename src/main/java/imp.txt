@@ -1,0 +1,212 @@
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class LoadBalancer {
+    private final Server[] servers;
+    private final AtomicInteger currentIndex = new AtomicInteger(0);
+
+    public LoadBalancer(int numServers) {
+        servers = new Server[numServers];
+        for (int i = 0; i < numServers; i++) {
+            servers[i] = new Server(i);
+        }
+    }
+
+    public Server getNextServer() {
+        int index = currentIndex.getAndUpdate(i -> (i + 1) % servers.length);
+        return servers[index];
+    }
+
+    public void handleRequest(Request request) {
+        Server server = getNextServer();
+        server.processRequest(request);
+    }
+
+    public static void main(String[] args) {
+        LoadBalancer loadBalancer = new LoadBalancer(1000);
+
+        // Simulate handling a high volume of requests
+        for (int i = 0; i < 10000; i++) {
+            Request request = new Request("Request " + i);
+            loadBalancer.handleRequest(request);
+        }
+    }
+}
+
+class Server {
+    private final int id;
+
+    public Server(int id) {
+        this.id = id;
+    }
+
+    public void processRequest(Request request) {
+        // Simulate request processing
+        System.out.println("Server " + id + " processing " + request.getName());
+    }
+}
+
+class Request {
+    private final String name;
+
+    public Request(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+
+-----------------------------------------------------------------------------------------------------
+CustomerID,Milk,Grocery
+1,1000,2000
+2,3000,4000
+3,100,200
+4,300,400
+
+import java.io.*;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class CustomerSegmentation {
+
+    private static final int NUM_CUSTOMERS = 4; // Adjust based on actual data
+
+    public static void main(String[] args) {
+        List<Customer> customers = loadCustomerData("D:\\documents\\rahul_sorted\\source_code\\BasicMavenJavaProgram1\\src\\main\\resources\\wholesale_data.csv");
+        double[][] distanceMatrix = calculateDistanceMatrix(customers);
+        List<Cluster> clusters = agglomerativeClustering(distanceMatrix, customers);
+        // Output clusters
+        for (Cluster cluster : clusters) {
+            System.out.println("Cluster:");
+            for (Customer customer : cluster.getMembers()) {
+                System.out.println(" - " + customer);
+            }
+        }
+    }
+
+    private static List<Customer> loadCustomerData(String filename) {
+        List<Customer> customers = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            br.readLine(); // Skip header
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");
+                int id = Integer.parseInt(values[0]);
+                double milk = Double.parseDouble(values[1]);
+                double grocery = Double.parseDouble(values[2]);
+                customers.add(new Customer(id, milk, grocery));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return customers;
+    }
+
+    private static double[][] calculateDistanceMatrix(List<Customer> customers) {
+        int size = customers.size();
+        double[][] distanceMatrix = new double[size][size];
+        for (int i = 0; i < size; i++) {
+            for (int j = i + 1; j < size; j++) {
+                distanceMatrix[i][j] = distanceMatrix[j][i] = calculateDistance(customers.get(i), customers.get(j));
+            }
+        }
+        return distanceMatrix;
+    }
+
+    private static double calculateDistance(Customer a, Customer b) {
+        double milkDiff = a.getMilk() - b.getMilk();
+        double groceryDiff = a.getGrocery() - b.getGrocery();
+        return Math.sqrt(milkDiff * milkDiff + groceryDiff * groceryDiff);
+    }
+
+    private static List<Cluster> agglomerativeClustering(double[][] distanceMatrix, List<Customer> customers) {
+        List<Cluster> clusters = new ArrayList<>();
+        for (Customer customer : customers) {
+            clusters.add(new Cluster(customer));
+        }
+
+        while (clusters.size() > 1) {
+            // Find the two closest clusters
+            double minDistance = Double.MAX_VALUE;
+            int clusterAIndex = -1;
+            int clusterBIndex = -1;
+
+            for (int i = 0; i < clusters.size(); i++) {
+                for (int j = i + 1; j < clusters.size(); j++) {
+                    double distance = calculateClusterDistance(clusters.get(i), clusters.get(j), distanceMatrix);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        clusterAIndex = i;
+                        clusterBIndex = j;
+                    }
+                }
+            }
+
+            // Merge the closest clusters
+            Cluster mergedCluster = mergeClusters(clusters.get(clusterAIndex), clusters.get(clusterBIndex));
+            clusters.remove(clusterBIndex);
+            clusters.set(clusterAIndex, mergedCluster);
+        }
+
+        return clusters;
+    }
+
+    private static double calculateClusterDistance(Cluster a, Cluster b, double[][] distanceMatrix) {
+        // Using single-linkage clustering (minimum distance)
+        double minDistance = Double.MAX_VALUE;
+        for (Customer memberA : a.getMembers()) {
+            for (Customer memberB : b.getMembers()) {
+                double distance = distanceMatrix[memberA.getId() - 1][memberB.getId() - 1];
+                minDistance = Math.min(minDistance, distance);
+            }
+        }
+        return minDistance;
+    }
+
+    private static Cluster mergeClusters(Cluster a, Cluster b) {
+        a.getMembers().addAll(b.getMembers());
+        return a;
+    }
+
+    static class Customer {
+        private final int id;
+        private final double milk;
+        private final double grocery;
+
+        public Customer(int id, double milk, double grocery) {
+            this.id = id;
+            this.milk = milk;
+            this.grocery = grocery;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public double getMilk() {
+            return milk;
+        }
+
+        public double getGrocery() {
+            return grocery;
+        }
+
+        @Override
+        public String toString() {
+            return "CustomerID: " + id + ", Milk: " + milk + ", Grocery: " + grocery;
+        }
+    }
+
+    static class Cluster {
+        private final List<Customer> members = new ArrayList<>();
+
+        public Cluster(Customer customer) {
+            members.add(customer);
+        }
+
+        public List<Customer> getMembers() {
+            return members;
+        }
+    }
+}
